@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: {{ .Values.database.name }}
+    namespace: {{ .Values.global.namespace }}-{{ .Values.global.env }}
+    labels:
+        name: {{ .Values.database.deploy.labels.name }}
+spec:
+    replicas: 1
+
+    selector:
+        matchLabels:
+            name: {{ .Values.database.name }}-pod
+            type: postgres-db
+
+    template:
+        metadata:
+            labels:
+                name: {{ .Values.database.name }}-pod
+                type: postgres-db
+        spec:
+            containers:
+                - name: postgres
+                  image: {{ .Values.database.deploy.template.spec.containers.image }}
+                  resources:
+                      limits:
+                          memory: {{ .Values.database.deploy.template.spec.containers.resources.limits.memory }}
+                          cpu: {{ .Values.database.deploy.template.spec.containers.resources.limits.cpu }}
+                  envFrom:
+                      - secretRef:
+                            name: {{ .Values.database.deploy.template.spec.containers.envFrom.secretRef.name }}
+                  ports:
+                      - containerPort: {{ .Values.database.deploy.template.spec.containers.ports.containerPort }}
+                        name: postgres
+                  livenessProbe:
+                      exec:
+                          command:
+                              - /bin/sh
+                              - -c
+                              - exec pg_isready -U "$(POSTGRES_USER)" -h 127.0.0.1 -p {{ .Values.database.deploy.template.spec.containers.ports.containerPort }}
+                      failureThreshold: 6
+                      initialDelaySeconds: 30
+                      periodSeconds: 10
+                      successThreshold: 1
+                      timeoutSeconds: 5
+                  readinessProbe:
+                      exec:
+                          command:
+                              - /bin/sh
+                              - -c
+                              - -e
+                              - PGPASSWORD=$(POSTGRES_PASSWORD)
+                              - exec psql -U "$(POSTGRES_USER)" -d "${POSTGRES_DB}" -p {{ .Values.database.deploy.template.spec.containers.ports.containerPort }} -c "SELECT 1"
+                      failureThreshold: 6
+                      initialDelaySeconds: 15
+                      periodSeconds: 10
+                      successThreshold: 1
+                      timeoutSeconds: 5
+                  volumeMounts:
+                      - mountPath: /var/lib/postgresql/data
+                        name: database-server-volume
+            volumes:
+              - name: database-server-volume
+                hostPath:
+                    path: {{ .Values.database.deploy.template.spec.volumes.hostPath.path }}
+                    # type: Directory
+                    

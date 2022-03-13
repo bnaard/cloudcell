@@ -1,0 +1,16 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Values.global.namespace }}-{{ .Values.global.env }}-ingress
+  namespace: {{ .Values.global.namespace }}-{{ .Values.global.env }}
+  annotations:
+    {{- with .Values.cloudcell_ingress.annotations }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}
+spec:  
+  rules:
+  {{- with .Values.cloudcell_ingress.rules }}
+  {{ toYaml . | nindent 4 }}
+  {{- end }}
+
+

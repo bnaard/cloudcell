@@ -1,0 +1,132 @@
+global:
+    namespace: cloudcell-stack
+    env: dev
+
+database:
+    name: database
+    deploy:
+        labels:
+            name: database-deploy
+        template:
+            spec:
+                containers:
+                    image: postgres:latest
+                    resources:
+                        limits:
+                            memory: "128Mi"
+                            cpu: "100m"
+                    envFrom:
+                        secretRef:
+                            name: database-server-env
+                    ports:
+                        containerPort: 5432
+                volumes:
+                    hostPath:
+                        path: /Users/bernhardgerlach/Documents/22I1_Development/cloudcell/database-server
+    service:
+        labels:
+            name: database-service
+        ports:
+            port: 5432
+            targetPort: 5432
+
+
+
+frontend_webserver:
+    name: frontend-webserver
+    code_directory:
+        hostPath: /Users/bernhardgerlach/Documents/22I1_Development/cloudcell/frontend-webserver
+    deploy:
+        replicas: 1
+        labels:
+            name: frontend-webserver-deploy
+        template:
+            metadata:
+                labels:
+                    name: frontend-webserver-pod
+                    type: frontend
+            spec:
+                containers:
+                    - name: frontend-webserver-pod
+                      image: frontend-webserver
+                      imagePullPolicy: Never
+                      ports:
+                          - containerPort: 80
+                      resources:
+                          limits:
+                              memory: "64Mi"
+                              cpu: "50m"
+    service:
+        labels:
+            name: frontend-webserver-service
+        ports:
+            - port: 80
+              targetPort: 80
+              protocol: TCP
+              name: http
+
+application_server:
+    name: application-server
+    code_directory:
+        hostPath: /Users/bernhardgerlach/Documents/22I1_Development/cloudcell/application-server
+    deploy:
+        replicas: 1
+        labels:
+            name: application-server-deploy
+        template:
+            metadata:
+                labels:
+                    name: application-server-pod
+                    type: backend
+            spec:
+                securityContext:
+                    runAsUser: 1000
+                    runAsGroup: 1000
+                    fsGroup: 1000
+                containers:
+                    - name: application-server-pod
+                      image: application-server
+                      # https://kubernetes.io/docs/concepts/containers/images/#image-pull-policy
+                      imagePullPolicy: Never
+                      ports:
+                          - containerPort: 3000
+                      resources:
+                          limits:
+                              memory: "64Mi"
+                              cpu: "50m"
+    service:
+        labels:
+            name: application-server-service
+        ports:
+            - port: 3000
+              targetPort: 3000
+              protocol: TCP
+              name: http
+
+
+cloudcell_ingress:
+    annotations:
+        nginx.ingress.kubernetes.io/rewrite-target: /
+    labels:
+        name: cloudcell-ingress
+    rules:
+        - host: localhost
+          http:
+              paths:
+                  - path: /
+                    pathType: Prefix
+                    backend:
+                        service:
+                            name: frontend-webserver-service
+                            port:
+                                number: 80
+        - host: localhost
+          http:
+              paths:
+                  - path: /api/
+                    pathType: Prefix
+                    backend:
+                        service:
+                            name: application-server-service
+                            port:
+                                number: 3000

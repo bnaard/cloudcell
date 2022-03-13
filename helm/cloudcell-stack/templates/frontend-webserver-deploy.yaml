@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: {{ .Values.frontend_webserver.name }}
+    namespace: {{ .Values.global.namespace }}-{{ .Values.global.env }}
+    labels:
+        name: {{ .Values.frontend_webserver.deploy.labels.name }}
+spec:
+    replicas: {{ .Values.frontend_webserver.deploy.replicas }}
+
+    selector:
+        matchLabels:
+            name: {{ .Values.frontend_webserver.deploy.template.metadata.labels.name }}
+            type: {{ .Values.frontend_webserver.deploy.template.metadata.labels.type }}
+
+    template:
+        metadata:
+            labels:
+                name: {{ .Values.frontend_webserver.deploy.template.metadata.labels.name }}
+                type: {{ .Values.frontend_webserver.deploy.template.metadata.labels.type }}
+        spec:
+            containers:
+                {{- range $container := .Values.frontend_webserver.deploy.template.spec.containers }}
+                - name: {{ $container.name }}
+                  image: {{ $container.image }}
+                  imagePullPolicy: {{ $container.imagePullPolicy }}
+                  command: ["/bin/sh", "-c", "while sleep 1000; do :; done"]
+                  volumeMounts:
+                    - mountPath: /workspace
+                      name: {{ $.Values.frontend_webserver.name }}-code-volume
+                    - mountPath: /home/vscode/.cache
+                      name: {{ $.Values.frontend_webserver.name }}-cache-volume
+                  ports:
+                      {{- range $port := $container.ports }}
+                      - containerPort: {{ $port.containerPort }}
+                      {{ end }}
+                  resources:
+                      limits:
+                          memory: {{ $container.resources.limits.memory }}
+                          cpu: {{ $container.resources.limits.cpu }}
+                {{- end }}
+            volumes:
+                - name: {{ .Values.frontend_webserver.name }}-code-volume
+                  hostPath:
+                    path: {{ .Values.frontend_webserver.code_directory.hostPath }}
+                    # type: Directory
+                - name: {{ .Values.frontend_webserver.name }}-cache-volume
+                  # https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
+                  emptyDir: {}

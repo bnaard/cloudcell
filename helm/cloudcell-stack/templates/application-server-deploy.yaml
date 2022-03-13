@@ -1,0 +1,70 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+    name: {{ .Values.application_server.name }}
+    namespace: {{ .Values.global.namespace }}-{{ .Values.global.env }}
+    labels:
+        name: {{ .Values.application_server.deploy.labels.name }}
+spec:
+    replicas: {{ .Values.application_server.deploy.replicas }}
+
+    selector:
+        matchLabels:
+            name: {{ .Values.application_server.deploy.template.metadata.labels.name }}
+            type: {{ .Values.application_server.deploy.template.metadata.labels.type }}
+
+    template:
+        metadata:
+            labels:
+                name: {{ .Values.application_server.deploy.template.metadata.labels.name }}
+                type: {{ .Values.application_server.deploy.template.metadata.labels.type }}
+        spec:
+            securityContext:
+                runAsUser: {{ .Values.application_server.deploy.template.spec.securityContext.runAsUser }}
+                runAsGroup: {{ .Values.application_server.deploy.template.spec.securityContext.runAsGroup }}
+                fsGroup: {{ .Values.application_server.deploy.template.spec.securityContext.fsGroup }}
+
+            initContainers:
+                - name: change-workspace-ownership-container
+                  image: busybox
+                  command: ["/bin/sh", "-c"]
+                  args:
+                    - "/bin/chown -R {{ .Values.application_server.deploy.template.spec.securityContext.runAsUser }}:{{ .Values.application_server.deploy.template.spec.securityContext.runAsGroup }} /workspace;"
+                    - "/bin/chown -R {{ .Values.application_server.deploy.template.spec.securityContext.runAsUser }}:{{ .Values.application_server.deploy.template.spec.securityContext.runAsGroup }} /home/vscode/.cache;"
+                  securityContext:
+                    runAsUser: 0
+                    privileged: true
+                  volumeMounts:
+                    - mountPath: /workspace
+                      name: {{ .Values.application_server.name }}-code-volume
+                    - mountPath: /home/vscode/.cache
+                      name: {{ .Values.application_server.name }}-cache-volume
+
+            containers:
+                {{- range $container := .Values.application_server.deploy.template.spec.containers }}
+                - name: {{ $container.name }}
+                  image: {{ $container.image }}
+                  imagePullPolicy: {{ $container.imagePullPolicy }}
+                  command: ["/bin/sh", "-c", "while sleep 1000; do :; done"]
+                  volumeMounts:
+                    - mountPath: /workspace
+                      name: {{ $.Values.application_server.name }}-code-volume
+                    - mountPath: /home/vscode/.cache
+                      name: {{ $.Values.application_server.name }}-cache-volume
+                  ports:
+                      {{- range $port := $container.ports }}
+                      - containerPort: {{ $port.containerPort }}
+                      {{ end }}
+                  resources:
+                      limits:
+                          memory: {{ $container.resources.limits.memory }}
+                          cpu: {{ $container.resources.limits.cpu }}
+                {{- end }}
+            volumes:
+                - name: {{ .Values.application_server.name }}-code-volume
+                  hostPath:
+                    path: {{ .Values.application_server.code_directory.hostPath }}
+                    # type: Directory
+                - name: {{ .Values.application_server.name }}-cache-volume
+                  # https://kubernetes.io/docs/concepts/storage/volumes/#emptydir
+                  emptyDir: {}

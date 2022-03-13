@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+    name: {{ .Values.frontend_webserver.name }}
+    namespace: {{ .Values.global.namespace }}-{{ .Values.global.env }}
+    labels:
+        {{- with .Values.frontend_webserver.service.labels }}
+        {{ toYaml . }}
+        {{- end }}
+spec:
+    type: ClusterIP
+    selector:
+        name: {{ .Values.frontend_webserver.deploy.template.metadata.labels.name }}
+        type: {{ .Values.frontend_webserver.deploy.template.metadata.labels.type }}
+    ports:
+    {{- with .Values.frontend_webserver.service.ports }}
+    {{ toYaml . | nindent 4 }}
+    {{- end }}
