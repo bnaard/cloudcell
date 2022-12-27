@@ -1,0 +1,107 @@
+[tool.poetry]
+name = "application-server"
+version = "0.0.0"
+description = "Application server for scalable, K8s-based spreadsheets and simulations."
+authors = ["Bernhard Gerlach <bernhard.gerlach@web.de>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+sqlmodel = "^0.0.6"
+fastapi = "^0.75.0"
+click = "^8.0.4"
+uvicorn = {extras = ["standard"], version = "^0.17.6"}
+
+[tool.poetry.dev-dependencies]
+poethepoet = "^0.13.1"
+pylint = "^2.12.2"
+black = "^22.1.0"
+mypy = "^0.941"
+pytest = "^7.1.1"
+pytest-cov = "^3.0.0"
+pytest-html = "^3.1.1"
+hypothesis = "^6.39.4"
+mkdocs = "^1.2.3"
+mkdocs-material = "^8.2.5"
+markdown-include = "^0.6.0"
+mkdocs-exclude = "^1.0.2"
+mkdocstrings = "^0.18.1"
+mkdocs-gen-files = "^0.3.4"
+mkdocs-pdf-export-plugin = "^0.5.10"
+mkdocs-mermaid2-plugin = "^0.5.2"
+mkdocs-coverage = "^0.2.5"
+asciinema = "^2.1.0"
+mike = "^1.1.2"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+log_cli = true
+log_cli_level = "DEBUG"
+log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s (%(filename)s:%(lineno)s)"
+log_cli_date_format = "%Y-%m-%d %H:%M:%S"
+addopts = "--doctest-modules"
+
+[tool.pytest]
+addopts = "--cov=$(pwd) --cov-report html"
+
+[tool.coverage.paths]
+source = [ "pyconfme" ]
+
+[tool.coverage.run]
+omit = [ "tests/*", ".venv/*" ]
+
+[tool.pylint]
+max-line-length = 88
+
+[tool.black]
+experimental-string-processing = true
+line-length = 88
+target-version = ['py39']
+include = '\.pyi?$'
+exclude = '''
+
+(
+  /(
+      \.eggs         # exclude a few common directories in the
+    | \.git          # root of the project
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+  | foo.py           # also separately exclude a file named foo.py in
+                     # the root of the project
+)
+'''
+
+[tool.poe.env]
+_VERSION = "v0.1.0"
+
+[tool.poe.tasks]
+t = "pytest"
+covtest = "coverage run -m pytest"
+covreport = "coverage html"
+ct = ["covtest", "covreport"]
+db = [
+        {cmd = "mike deploy $_VERSION"}, 
+        {cmd = "mike set-default $_VERSION"}, 
+        {cmd = "mike alias $_VERSION latest"}
+    ]
+d = "mike serve"
+clean = """
+rm -rf .coverage
+       html_cov
+       .mypy_cache
+       .pytest_cache
+       .hypothesis
+       dist
+       site
+       ./**/__pycache__
+"""

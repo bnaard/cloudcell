@@ -23,6 +23,7 @@ spec:
                 runAsUser: {{ .Values.application_server.deploy.template.spec.securityContext.runAsUser }}
                 runAsGroup: {{ .Values.application_server.deploy.template.spec.securityContext.runAsGroup }}
                 fsGroup: {{ .Values.application_server.deploy.template.spec.securityContext.fsGroup }}
+                runAsNonRoot: true
 
             initContainers:
                 - name: change-workspace-ownership-container
